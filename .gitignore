@@ -15,3 +15,6 @@
 
 # Vim
 *.swp
+
+# Project specific
+/bin/*
