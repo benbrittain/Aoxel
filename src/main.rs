@@ -2,11 +2,21 @@
 // Ben Brittain
 //
 
+#[feature(globs)];
+
 extern mod glfw;
 extern mod gl;
 extern mod green;
 
+// standard libraries and such
 use std::libc;
+use std::gc;
+
+// parts of this project
+use world::*;
+use renderer::*;
+mod world;
+mod renderer;
 
 fn main() {
   println!("Starting Aoxel...");
@@ -27,15 +37,28 @@ fn main() {
 //    window.set_cursor_pos_callback(~KeyContext);
 //    window.set_focus_callback(
 
-    //TODO initialize world
+    //initialize world
+    let world:World = World::new();
+
+    //initialize renderer
+    let renderer:Renderer = Renderer::new();
+
+    while !window.should_close() {
+      glfw::poll_events();
+
+      gl::ClearColor(0.1, 0.1, 0.1, 0.1);
+      gl::Clear(0x00004000);
+      window.swap_buffers();
+    }
+
   }
 }
 
 struct KeyContext;
 impl glfw::KeyCallback for KeyContext {
   fn call (&self, window: &glfw::Window, key: glfw::Key,
-          scancode: libc::c_int, action: glfw::Action,
-          mods: glfw::Modifiers) {
+          _scancode: libc::c_int, action: glfw::Action,
+          _mods: glfw::Modifiers) {
     match (key, action) {
       (glfw::KeyEscape, glfw::Press) => window.set_should_close(true),
       _ => println!("{}", key.to_str())
