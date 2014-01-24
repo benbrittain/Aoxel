@@ -39,7 +39,7 @@ fn main() {
 //    window.set_focus_callback(
 
     //initialize world
-    let mut chunk:Chunk = Chunk::new();
+    let mut chunk:Chunk = Chunk::new_with_random();
 
     //initialize renderer
     let renderer:Renderer = Renderer::new();
@@ -49,7 +49,6 @@ fn main() {
 
       // render
       renderer.update(&mut chunk);
-      println!("{}", chunk.update);
       window.swap_buffers();
     }
 

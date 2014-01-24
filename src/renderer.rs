@@ -24,6 +24,7 @@ use cgmath::point::*;
 use cgmath::vector::*;
 
 use chunk::*;
+use chunk::Block;
 
 // TODO change lifetime
 // TODO load into renderer
@@ -52,7 +53,7 @@ static FS_SRC: &'static str =
   in vec3 Color;\n\
   out vec4 outColor;\n\
   void main(){\n\
-      outColor = vec4(Color, 1.0); \n\
+      outColor = vec4(Color.r/4, Color.r/4, Color.r/4, 1.0); \n\
   }";
 
 pub struct Renderer {
@@ -80,6 +81,8 @@ impl Renderer {
 
 
     gl::Enable(gl::DEPTH_TEST);
+    //    TODO enable
+//    gl::Enable(gl::CULL_FACE);
 
     let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
     let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
@@ -115,14 +118,14 @@ impl Renderer {
 
     let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(renderer.program, ptr));
     gl::EnableVertexAttribArray(pos_attr as GLuint);
-    gl::VertexAttribPointer(pos_attr as u32, 3, gl::FLOAT, gl::FALSE,
-                            (6 * mem::size_of::<GLfloat>()) as i32, ptr::null());
+    gl::VertexAttribPointer(pos_attr as u32, 3, gl::BYTE, gl::FALSE,
+                            (4 * mem::size_of::<GLbyte>()) as i32, ptr::null());
 
     let col_attr = "color".with_c_str(|ptr| gl::GetAttribLocation(renderer.program, ptr));
     gl::EnableVertexAttribArray(col_attr as GLuint);
-    gl::VertexAttribPointer(col_attr as u32, 3, gl::FLOAT, gl::FALSE,
-                            (6*mem::size_of::<GLfloat>()) as GLsizei,
-                            cast::transmute(3*mem::size_of::<GLfloat>() as uint));
+    gl::VertexAttribPointer(col_attr as u32, 1, gl::BYTE, gl::FALSE,
+                            (4 *mem::size_of::<GLbyte>()) as GLsizei,
+                            cast::transmute(3*mem::size_of::<GLbyte>() as uint));
 
     //glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
 
@@ -131,9 +134,8 @@ impl Renderer {
   }
 
   pub fn update(&self, chunk: &mut Chunk) {
-    println!("{}",chunk.update);
     if chunk.update {
-      let mut block_vertexes: ~[GLfloat] = ~[];
+      let mut block_vertexes: ~[GLbyte] = ~[];
       chunk.reset_update();
 
     // loop over blocks in the chunk
@@ -143,18 +145,17 @@ impl Renderer {
             match chunk.get_block(x, y, z) {
               Some(block) =>  {
                 //TODO append instead vec::append(block_vertexes, gen_vertex(x,y,z));
-                let mut rng = rand::task_rng();
-                let r: f32 = rng.gen_range(0.0 as f32, 1.0 as f32);
-                let g: f32 = rng.gen_range(0.0 as f32, 1.0 as f32);
-                let b: f32 = rng.gen_range(0.0 as f32, 1.0 as f32);
+//                let mut rng = rand::task_rng();
+//                let r: int = rng.gen_range(0, 2);
+//
 
-                for i in gen_vertex(x, y, z, r, g, b).iter(){
-                block_vertexes.push(*i);
+                for i in gen_vertex(x, y, z, block).iter(){
+                  block_vertexes.push(*i);
                 }
                 gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
                 unsafe{
                   gl::BufferData(gl::ARRAY_BUFFER,
-                  (block_vertexes.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
+                  (block_vertexes.len() * mem::size_of::<GLbyte>()) as GLsizeiptr,
                   cast::transmute(&block_vertexes[0]), gl::STATIC_DRAW);
                 }
               }
@@ -167,7 +168,7 @@ impl Renderer {
 
 
       unsafe {
-        let view:Mat4<f32> = Mat4::look_at(&Point3::new(15.0 as f32, 15.0, 15.0),
+        let view:Mat4<f32> = Mat4::look_at(&Point3::new(25.0 as f32, 25.0, 25.0),
         &Point3::new(0.0 as f32, 0.0, 0.0),
         &Vec3::new(0.0 as f32, 0.0, 1.0));
         let uni_view = "view".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
@@ -218,51 +219,62 @@ fn compile_shader(src: &str, ty: GLenum) -> GLuint {
 }
 
 
-fn gen_vertex(x: int, y: int, z: int, r: f32, g: f32, b: f32) -> [GLfloat, ..216] {
-  let x = x as f32;
-  let y = y as f32;
-  let z = z as f32;
-  let x: [GLfloat, ..216] = [
-    x + -0.5, y +-0.5, z + -0.5, r, g, b,
-    x + 0.5, y + -0.5, z + -0.5, r, g, b,
-    x + 0.5, y +  0.5, z + -0.5, r, g, b,
-    x + 0.5, y +  0.5, z + -0.5, r, g, b,
-    x + -0.5, y + 0.5, z + -0.5, r, g, b,
-    x + -0.5, y +-0.5, z + -0.5, r, g, b,
+fn gen_vertex(x: int, y: int, z: int, r: Block) -> [GLbyte, ..144] {
 
-    x + -0.5, y +-0.5, z +  0.5, r, g, b,
-    x +  0.5, y +-0.5, z +  0.5, r, g, b,
-    x +  0.5, y + 0.5, z +  0.5, r, g, b,
-    x +  0.5, y + 0.5, z +  0.5, r, g, b,
-    x + -0.5, y + 0.5, z +  0.5, r, g, b,
-    x + -0.5, y +-0.5, z +  0.5, r, g, b,
+  let x: i8 = x as i8;
+  let y: i8 = y as i8;
+  let z: i8 = z as i8;
+  let r: i8 = r as i8;
 
-    x + -0.5, y + 0.5, z +  0.5, r, g, b,
-    x + -0.5, y + 0.5, z + -0.5, r, g, b,
-    x + -0.5, y +-0.5, z + -0.5, r, g, b,
-    x + -0.5, y +-0.5, z + -0.5, r, g, b,
-    x + -0.5, y +-0.5, z +  0.5, r, g, b,
-    x + -0.5, y + 0.5, z +  0.5, r, g, b,
+  let x: [GLbyte, ..144] = [
 
-    x +  0.5, y + 0.5, z +  0.5, r, g, b,
-    x +  0.5, y + 0.5, z + -0.5, r, g, b,
-    x +  0.5, y +-0.5, z + -0.5, r, g, b,
-    x +  0.5, y +-0.5, z + -0.5, r, g, b,
-    x +  0.5, y +-0.5, z +  0.5, r, g, b,
-    x +  0.5, y + 0.5, z +  0.5, r, g, b,
+    // View from negative x
+    x,      y,      z,            r,
+    x,      y,      z + 1,        r,
+    x,      y + 1,  z,            r,
+    x,      y + 1,  z,            r,
+    x,      y,      z + 1,        r,
+    x,      y + 1,  z + 1,        r,
 
-    x + -0.5, y +-0.5, z + -0.5, r, g, b,
-    x +  0.5, y +-0.5, z + -0.5, r, g, b,
-    x +  0.5, y +-0.5, z +  0.5, r, g, b,
-    x +  0.5, y +-0.5, z +  0.5, r, g, b,
-    x + -0.5, y +-0.5, z +  0.5, r, g, b,
-    x + -0.5, y +-0.5, z + -0.5, r, g, b,
+    // View from positive x
+    x + 1,  y,      z,            r,
+    x + 1,  y + 1,  z,            r,
+    x + 1,  y,      z + 1,        r,
+    x + 1,  y + 1,  z,            r,
+    x + 1,  y + 1,  z + 1,        r,
+    x + 1,  y,      z + 1,        r,
 
-    x + -0.5, y + 0.5, z + -0.5, r, g, b,
-    x +  0.5, y + 0.5, z + -0.5, r, g, b,
-    x +  0.5, y + 0.5, z +  0.5, r, g, b,
-    x +  0.5, y + 0.5, z +  0.5, r, g, b,
-    x + -0.5, y + 0.5, z +  0.5, r, g, b,
-    x + -0.5, y + 0.5, z + -0.5, r, g, b];
+    // View from negative y
+    x,      y,      z,            r,
+    x + 1,  y,      z,            r,
+    x + 1,  y,      z + 1,        r,
+    x + 1,  y,      z + 1,        r,
+    x,      y,      z + 1,        r,
+    x,      y,      z,            r,
+
+    // View from positive y
+    x,      y + 1,  z,            r,
+    x + 1,  y + 1,  z,            r,
+    x + 1,  y + 1,  z + 1,        r,
+    x + 1,  y + 1,  z + 1,        r,
+    x,      y + 1,  z + 1,        r,
+    x,      y + 1,  z,            r,
+
+    // View from negative z
+    x,      y,      z + 1,        r,
+    x,      y + 1,  z + 1,        r,
+    x + 1,  y,      z + 1,        r,
+    x + 1,  y,      z + 1,        r,
+    x,      y + 1,  z + 1,        r,
+    x + 1,  y + 1,  z + 1,        r,
+
+    // View from positive z
+    x,      y,      z,            r,
+    x + 1,  y,      z,            r,
+    x,      y + 1,  z,            r,
+    x + 1,  y,      z,            r,
+    x + 1,  y + 1,  z,            r,
+    x,      y + 1,  z,            r
+    ];
   x
 }
