@@ -7,15 +7,16 @@
 extern mod glfw;
 extern mod gl;
 extern mod green;
+extern mod cgmath;
 
 // standard libraries and such
 use std::libc;
 use std::gc;
 
 // parts of this project
-use world::*;
+use chunk::*;
 use renderer::*;
-mod world;
+mod chunk;
 mod renderer;
 
 fn main() {
@@ -38,7 +39,7 @@ fn main() {
 //    window.set_focus_callback(
 
     //initialize world
-    let world:World = World::new();
+    let mut chunk:Chunk = Chunk::new();
 
     //initialize renderer
     let renderer:Renderer = Renderer::new();
@@ -46,8 +47,9 @@ fn main() {
     while !window.should_close() {
       glfw::poll_events();
 
-      gl::ClearColor(0.1, 0.1, 0.1, 0.1);
-      gl::Clear(0x00004000);
+      // render
+      renderer.update(&mut chunk);
+      println!("{}", chunk.update);
       window.swap_buffers();
     }
 

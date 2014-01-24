@@ -3,12 +3,12 @@ aoxel_bin_path=bin
 glfw_path=~/workspace/glfw-rs
 glfw_lib_path=~/workspace/glfw-rs/build/lib/
 gl_lib_path=~/workspace/gl-rs/build/x86_64-unknown-linux-gnu/gl
-cgmath_lib_path=~/workspace/cgmath-rs/lib
+cgmath_lib_path=~/workspace/cgmath-rs/build/x86_64-unknown-linux-gnu/cgmath
 stb_image_lib_path=lib/rust-stb-image/
 link_args="-lglfw"
 local_libs=$(shell find src/ -type f -name '*.rs')
 
-libs=-L $(glfw_lib_path) -L $(gl_lib_path) -L $(cgmath_lib_path) -L $(stb_image_lib_path)
+libs=-L $(glfw_lib_path) -L $(gl_lib_path) -L $(cgmath_lib_path)
 
 all:
 	mkdir -p $(aoxel_bin_path)
