@@ -149,7 +149,7 @@ impl Renderer {
 //                let r: int = rng.gen_range(0, 2);
 //
 
-                for i in gen_vertex(x, y, z, block).iter(){
+                for i in gen_vertex(x, y, z, block, chunk).iter(){
                   block_vertexes.push(*i);
                 }
                 gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
@@ -159,7 +159,7 @@ impl Renderer {
                   cast::transmute(&block_vertexes[0]), gl::STATIC_DRAW);
                 }
               }
-              None => println!("no block to render at ({},{},{})", x, y, z)
+              None => ()// println!("no block to render at ({},{},{})", x, y, z)
             }
 
           }
@@ -168,13 +168,13 @@ impl Renderer {
 
 
       unsafe {
-        let view:Mat4<f32> = Mat4::look_at(&Point3::new(25.0 as f32, 25.0, 25.0),
+        let view:Mat4<f32> = Mat4::look_at(&Point3::new(75.0 as f32, 75.0, 75.0),
         &Point3::new(0.0 as f32, 0.0, 0.0),
         &Vec3::new(0.0 as f32, 0.0, 1.0));
         let uni_view = "view".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
         gl::UniformMatrix4fv(uni_view , 1, gl::FALSE, view.ptr());
 
-        let proj = projection::perspective(deg(45.0 as f32), 800.0/600.0, 1.0, 50.0);
+        let proj = projection::perspective(deg(45.0 as f32), 800.0/600.0, 1.0, 150.0);
         let uni_proj = "proj".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
         gl::UniformMatrix4fv(uni_proj, 1, gl::FALSE, proj.ptr());
 
@@ -219,62 +219,79 @@ fn compile_shader(src: &str, ty: GLenum) -> GLuint {
 }
 
 
-fn gen_vertex(x: int, y: int, z: int, r: Block) -> [GLbyte, ..144] {
+fn gen_vertex(x_in: int, y_in: int, z_in: int, block_type: Block, chunk: &Chunk) -> ~[GLbyte] {
 
-  let x: i8 = x as i8;
-  let y: i8 = y as i8;
-  let z: i8 = z as i8;
-  let r: i8 = r as i8;
+  let x: i8 = x_in as i8;
+  let y: i8 = y_in as i8;
+  let z: i8 = z_in as i8;
+  let block_type: i8 = block_type as i8;
 
-  let x: [GLbyte, ..144] = [
+  let mut build_vec: ~[GLbyte] = ~[];
 
     // View from negative x
-    x,      y,      z,            r,
-    x,      y,      z + 1,        r,
-    x,      y + 1,  z,            r,
-    x,      y + 1,  z,            r,
-    x,      y,      z + 1,        r,
-    x,      y + 1,  z + 1,        r,
+//  println!("{},{},{}",x_in,y_in,z_in);
+  if chunk.get_block(x_in - 1, y_in , z_in).is_none() {
+    build_vec = vec::append(build_vec,
+                           [x,      y,      z,            block_type,
+                            x,      y,      z + 1,        block_type,
+                            x,      y + 1,  z,            block_type,
+                            x,      y + 1,  z,            block_type,
+                            x,      y,      z + 1,        block_type,
+                            x,      y + 1,  z + 1,        block_type]);
+  }
 
     // View from positive x
-    x + 1,  y,      z,            r,
-    x + 1,  y + 1,  z,            r,
-    x + 1,  y,      z + 1,        r,
-    x + 1,  y + 1,  z,            r,
-    x + 1,  y + 1,  z + 1,        r,
-    x + 1,  y,      z + 1,        r,
+  if chunk.get_block(x_in + 1, y_in , z_in).is_none() {
+    build_vec = vec::append(build_vec,
+                           [x + 1,  y,      z,            block_type,
+                            x + 1,  y + 1,  z,            block_type,
+                            x + 1,  y,      z + 1,        block_type,
+                            x + 1,  y + 1,  z,            block_type,
+                            x + 1,  y + 1,  z + 1,        block_type,
+                            x + 1,  y,      z + 1,        block_type]);
+  }
 
     // View from negative y
-    x,      y,      z,            r,
-    x + 1,  y,      z,            r,
-    x + 1,  y,      z + 1,        r,
-    x + 1,  y,      z + 1,        r,
-    x,      y,      z + 1,        r,
-    x,      y,      z,            r,
+  if chunk.get_block(x_in, y_in - 1, z_in).is_none() {
+    build_vec = vec::append(build_vec,
+                           [x,      y,      z,            block_type,
+                            x + 1,  y,      z,            block_type,
+                            x + 1,  y,      z + 1,        block_type,
+                            x + 1,  y,      z + 1,        block_type,
+                            x,      y,      z + 1,        block_type,
+                            x,      y,      z,            block_type]);
+  }
 
     // View from positive y
-    x,      y + 1,  z,            r,
-    x + 1,  y + 1,  z,            r,
-    x + 1,  y + 1,  z + 1,        r,
-    x + 1,  y + 1,  z + 1,        r,
-    x,      y + 1,  z + 1,        r,
-    x,      y + 1,  z,            r,
+  if chunk.get_block(x_in, y_in + 1, z_in).is_none() {
+    build_vec = vec::append(build_vec,
+                           [x,      y + 1,  z,            block_type,
+                            x + 1,  y + 1,  z,            block_type,
+                            x + 1,  y + 1,  z + 1,        block_type,
+                            x + 1,  y + 1,  z + 1,        block_type,
+                            x,      y + 1,  z + 1,        block_type,
+                            x,      y + 1,  z,            block_type]);
+  }
 
     // View from negative z
-    x,      y,      z + 1,        r,
-    x,      y + 1,  z + 1,        r,
-    x + 1,  y,      z + 1,        r,
-    x + 1,  y,      z + 1,        r,
-    x,      y + 1,  z + 1,        r,
-    x + 1,  y + 1,  z + 1,        r,
-
+  if chunk.get_block(x_in, y_in, z_in - 1).is_none() {
+    build_vec = vec::append(build_vec,
+                           [x,      y,      z + 1,        block_type,
+                            x,      y + 1,  z + 1,        block_type,
+                            x + 1,  y,      z + 1,        block_type,
+                            x + 1,  y,      z + 1,        block_type,
+                            x,      y + 1,  z + 1,        block_type,
+                            x + 1,  y + 1,  z + 1,        block_type]);
+  }
     // View from positive z
-    x,      y,      z,            r,
-    x + 1,  y,      z,            r,
-    x,      y + 1,  z,            r,
-    x + 1,  y,      z,            r,
-    x + 1,  y + 1,  z,            r,
-    x,      y + 1,  z,            r
-    ];
-  x
+  if chunk.get_block(x_in, y_in, z_in + 1).is_none() {
+    build_vec = vec::append(build_vec,
+                           [x,      y,      z,            block_type,
+                            x + 1,  y,      z,            block_type,
+                            x,      y + 1,  z,            block_type,
+                            x + 1,  y,      z,            block_type,
+                            x + 1,  y + 1,  z,            block_type,
+                            x,      y + 1,  z,            block_type]);
+  }
+    build_vec
 }

@@ -16,8 +16,10 @@ use std::gc;
 // parts of this project
 use chunk::*;
 use renderer::*;
+use octree::*;
 mod chunk;
 mod renderer;
+mod octree;
 
 fn main() {
   println!("Starting Aoxel...");
@@ -38,8 +40,13 @@ fn main() {
 //    window.set_cursor_pos_callback(~KeyContext);
 //    window.set_focus_callback(
 
-    //initialize world
+
+
+    let tree: Octree<Chunk> = Octree::new(chunk);
+    //
+    //initialize chunk 
     let mut chunk:Chunk = Chunk::new_with_random();
+
 
     //initialize renderer
     let renderer:Renderer = Renderer::new();
