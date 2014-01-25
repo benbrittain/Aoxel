@@ -87,7 +87,8 @@ impl World {
 
   // 'cause I have no clue
   fn init_terrain(&mut self) -> () {
-    let perlin = Perlin::from_seed_str("awesome");
+    let mut rng = rand::task_rng();
+    let perlin = Perlin::from_seed_str(rng.gen_ascii_str(5));
     let mut build_vec: ~[Chunk] = ~[];
     let mut world: [[int, ..50], ..50] = [[0, ..50], ..50];
     for y in range(0, 50) {

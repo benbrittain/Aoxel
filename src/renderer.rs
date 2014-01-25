@@ -10,6 +10,7 @@ use std::cast;
 use std::ptr;
 use std::vec;
 use std::rand;
+use std::str;
 
 use std::rand::*;
 use gl::types::*;
@@ -36,14 +37,14 @@ static VS_SRC: &'static str =
   in vec3 color;\n\
   out vec3 Color;\n\
 
-  uniform vec3 offset;\n\
-  uniform mat4 view;\n\
-  uniform mat4 proj;\n\
+  uniform mat4 model_to_world;\n\
+  uniform mat4 world_to_camera;\n\
+  uniform mat4 camera_to_clip;\n\
 
   void main() {\n\
     Color = color;\n\
-    vec4 camera_pos = vec4(position.x, position.y, position.z, 1.0) + vec4(offset.x, offset.y, offset.z, 0.0); \n\
-    gl_Position = proj * view * camera_pos;\n\
+    vec4 camera_pos = vec4(position.x, position.y, position.z, 1.0);\n\
+    gl_Position = model_to_world * camera_to_clip * world_to_camera * camera_pos;\n\
   }";
 
 static FS_SRC: &'static str =
@@ -56,10 +57,14 @@ static FS_SRC: &'static str =
 
 pub struct Renderer {
   // OpenGL Buffers
-  vao: GLuint,
-  vbo: GLuint,
-  ebo: GLuint,
-  program: GLuint
+  vao:      GLuint,
+  vbo:      GLuint,
+  ebo:      GLuint,
+  program:  GLuint,
+
+  model_to_world:   Mat4<f32>,
+  world_to_camera:  Mat4<f32>,
+  camera_to_clip:   Mat4<f32>
 
 }
 
@@ -67,10 +72,16 @@ pub struct Renderer {
 impl Renderer {
   pub fn new() -> Renderer {
     let mut renderer = Renderer {
-      vao: 0,
-      vbo: 0,
-      ebo: 0,
-      program: 0
+      vao:      0,
+      vbo:      0,
+      ebo:      0,
+      program:  0,
+      model_to_world:   Mat4::identity(),
+      world_to_camera:  Mat4::identity(),
+//      world_to_camera:  Mat4::look_at(&Point3::new(75.0 as f32, 75.0, 75.0),
+//                                      &Point3::new(0.0 as f32, 0.0, 0.0),
+//                                      &Vec3::new(0.0 as f32, 0.0, 1.0)),
+      camera_to_clip:   Mat4::identity()
     };
 
 
@@ -78,6 +89,7 @@ impl Renderer {
     //    TODO enable
     //gl::Enable(gl::CULL_FACE);
 
+    // Compile Shaders
     let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
     let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
 
@@ -118,11 +130,10 @@ impl Renderer {
     renderer
   }
 
-  pub fn update(&self, chunk: &Chunk) {
+  pub fn update(&mut self, chunk: &Chunk) {
       let mut block_vertexes: ~[GLbyte] = ~[];
-  //    chunk.reset_update();
 
-    // loop over blocks in the chunk
+      // loop over blocks in the chunk
       for z in range(0, chunk.len()) {
         for x in range(0, chunk.len()) {
           for y in range(0, chunk.len()) {
@@ -140,32 +151,33 @@ impl Renderer {
               }
               None => ()
             }
+          }
         }
       }
 
 
       unsafe {
-        let view:Mat4<f32> = Mat4::look_at(&Point3::new(75.0 as f32, 75.0, 75.0),
-        &Point3::new(0.0 as f32, 0.0, 0.0),
-        &Vec3::new(0.0 as f32, 0.0, 1.0));
-        let uni_view = "view".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
-        gl::UniformMatrix4fv(uni_view , 1, gl::FALSE, view.ptr());
+        self.world_to_camera  = Mat4::look_at(&Point3::new(75.0 as f32, 75.0, 75.0),
+                                              &Point3::new(0.0 as f32, 0.0, 0.0),
+                                              &Vec3::new(0.0 as f32, 0.0, 1.0));
+        self.camera_to_clip   = projection::perspective(deg(45.0 as f32),
+                                                        800.0/600.0, 1.0, 150.0);
 
-        let proj = projection::perspective(deg(45.0 as f32), 800.0/600.0, 1.0, 150.0);
-        let uni_proj = "proj".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
-        gl::UniformMatrix4fv(uni_proj, 1, gl::FALSE, proj.ptr());
+        let uni_m_to_wor =
+          "model_to_world".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
+        let uni_w_to_cam =
+          "world_to_camera".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
+        let uni_cam_to_c =
+          "camera_to_clip".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
 
-        let uni_offset = "offset".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
-        gl::Uniform3f(uni_offset, 0.0, 0.0, 0.0);
+        gl::UniformMatrix4fv(uni_m_to_wor, 1, gl::FALSE, self.model_to_world.ptr());
+        gl::UniformMatrix4fv(uni_w_to_cam, 1, gl::FALSE, self.world_to_camera.ptr());
+        gl::UniformMatrix4fv(uni_cam_to_c, 1, gl::FALSE, self.camera_to_clip.ptr());
 
       }
-//      gl::ClearColor(0.1, 0.1, 0.1, 0.1);
-      //TODO change to constant
- //     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
       // Draw to the screen
       gl::DrawArrays(gl::TRIANGLES, 0, block_vertexes.len() as i32);
-    }
   }
 }
 
@@ -185,8 +197,8 @@ fn compile_shader(src: &str, ty: GLenum) -> GLuint {
       gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
       let mut buf = vec::from_elem(len as uint, 0u8);
       gl::GetShaderInfoLog(shader, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
-      print!("{}", src);
-      fail!(buf);
+      print!("{}", str::raw::from_utf8(buf));
+      fail!();
     }
   }
   shader
