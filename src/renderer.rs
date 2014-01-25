@@ -26,8 +26,6 @@ use cgmath::vector::*;
 use chunk::*;
 use chunk::Block;
 
-// TODO change lifetime
-// TODO load into renderer
 // TODO extract into data file
 // TODO change variables to a more rust style
 
@@ -63,14 +61,10 @@ pub struct Renderer {
   ebo: GLuint,
   program: GLuint
 
-  // Window
-//  window: glfw::Window
-
 }
 
 
 impl Renderer {
-//  pub fn new(window: @glfw::Window) -> Renderer {
   pub fn new() -> Renderer {
     let mut renderer = Renderer {
       vao: 0,
@@ -82,7 +76,7 @@ impl Renderer {
 
     gl::Enable(gl::DEPTH_TEST);
     //    TODO enable
-//    gl::Enable(gl::CULL_FACE);
+    //gl::Enable(gl::CULL_FACE);
 
     let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
     let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
@@ -106,13 +100,6 @@ impl Renderer {
       gl::GenBuffers(1, &mut renderer.vbo);
       gl::BindBuffer(gl::ARRAY_BUFFER, renderer.vbo);
 
-      // Element Buffer Object
-//      gl::GenBuffers(1, &mut renderer.ebo);
-//      gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, renderer.ebo);
-//      gl::BufferData(gl::ELEMENT_ARRAY_BUFFER,
-//                     (elements.len() * mem::size_of::<GLuint>()) as GLsizeiptr,
-//                     cast::transmute(&elements), gl::STATIC_DRAW);
-
     // Use Shader
     gl::UseProgram(renderer.program);
 
@@ -127,16 +114,13 @@ impl Renderer {
                             (4 *mem::size_of::<GLbyte>()) as GLsizei,
                             cast::transmute(3*mem::size_of::<GLbyte>() as uint));
 
-    //glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
-
     }
     renderer
   }
 
-  pub fn update(&self, chunk: &mut Chunk) {
-    if chunk.update {
+  pub fn update(&self, chunk: &Chunk) {
       let mut block_vertexes: ~[GLbyte] = ~[];
-      chunk.reset_update();
+  //    chunk.reset_update();
 
     // loop over blocks in the chunk
       for z in range(0, chunk.len()) {
@@ -144,11 +128,6 @@ impl Renderer {
           for y in range(0, chunk.len()) {
             match chunk.get_block(x, y, z) {
               Some(block) =>  {
-                //TODO append instead vec::append(block_vertexes, gen_vertex(x,y,z));
-//                let mut rng = rand::task_rng();
-//                let r: int = rng.gen_range(0, 2);
-//
-
                 for i in gen_vertex(x, y, z, block, chunk).iter(){
                   block_vertexes.push(*i);
                 }
@@ -159,10 +138,8 @@ impl Renderer {
                   cast::transmute(&block_vertexes[0]), gl::STATIC_DRAW);
                 }
               }
-              None => ()// println!("no block to render at ({},{},{})", x, y, z)
+              None => ()
             }
-
-          }
         }
       }
 
@@ -182,12 +159,9 @@ impl Renderer {
         gl::Uniform3f(uni_offset, 0.0, 0.0, 0.0);
 
       }
-      gl::ClearColor(0.1, 0.1, 0.1, 0.1);
+//      gl::ClearColor(0.1, 0.1, 0.1, 0.1);
       //TODO change to constant
-      gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-
-      //   glBindBuffer(gl::ARRAY_BUFFER, self.vbo);
-      //   glVertexAttribPointer(attribute_coord, 4, GL_BYTE, GL_FALSE, 0, 0);
+ //     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
       // Draw to the screen
       gl::DrawArrays(gl::TRIANGLES, 0, block_vertexes.len() as i32);
@@ -220,16 +194,15 @@ fn compile_shader(src: &str, ty: GLenum) -> GLuint {
 
 
 fn gen_vertex(x_in: int, y_in: int, z_in: int, block_type: Block, chunk: &Chunk) -> ~[GLbyte] {
+  let (coord_x, coord_y, coord_z) = chunk.coords;
 
-  let x: i8 = x_in as i8;
-  let y: i8 = y_in as i8;
-  let z: i8 = z_in as i8;
+  let x: i8 = (x_in + coord_x*chunk.size) as i8;
+  let y: i8 = (y_in + coord_y*chunk.size) as i8;
+  let z: i8 = (z_in + coord_z*chunk.size) as i8;
   let block_type: i8 = block_type as i8;
 
   let mut build_vec: ~[GLbyte] = ~[];
 
-    // View from negative x
-//  println!("{},{},{}",x_in,y_in,z_in);
   if chunk.get_block(x_in - 1, y_in , z_in).is_none() {
     build_vec = vec::append(build_vec,
                            [x,      y,      z,            block_type,
@@ -293,5 +266,5 @@ fn gen_vertex(x_in: int, y_in: int, z_in: int, block_type: Block, chunk: &Chunk)
                             x + 1,  y + 1,  z,            block_type,
                             x,      y + 1,  z,            block_type]);
   }
-    build_vec
+  build_vec
 }

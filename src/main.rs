@@ -8,6 +8,7 @@ extern mod glfw;
 extern mod gl;
 extern mod green;
 extern mod cgmath;
+extern mod noise;
 
 // standard libraries and such
 use std::libc;
@@ -16,10 +17,10 @@ use std::gc;
 // parts of this project
 use chunk::*;
 use renderer::*;
-use octree::*;
+use world::*;
 mod chunk;
 mod renderer;
-mod octree;
+mod world;
 
 fn main() {
   println!("Starting Aoxel...");
@@ -41,21 +42,22 @@ fn main() {
 //    window.set_focus_callback(
 
 
+    // Create the World which manag:s Chunks
+    let mut world: World = World::new();
 
-    let tree: Octree<Chunk> = Octree::new(chunk);
-    //
     //initialize chunk 
-    let mut chunk:Chunk = Chunk::new_with_random();
+//    let mut chunk:Chunk = Chunk::new_with_random();
 
 
     //initialize renderer
-    let renderer:Renderer = Renderer::new();
+//    let renderer:Renderer = Renderer::new();
 
     while !window.should_close() {
       glfw::poll_events();
 
       // render
-      renderer.update(&mut chunk);
+ //     renderer.update(&mut chunk);
+      world.render();
       window.swap_buffers();
     }
 

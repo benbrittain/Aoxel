@@ -13,19 +13,25 @@ pub enum Block {
 pub struct Chunk {
   land: [[[Block, ..16], ..16], ..16],
   update: bool,
-  size: int
+  size: int,
+  coords: (int, int, int)
 }
 
 impl Chunk {
-  pub fn new() -> Chunk {
+  pub fn new(x: int, y: int, z: int) -> Chunk {
     Chunk {
-      land: [[[Generic, ..16], ..16], ..16],
+      land: [[[Space, ..16], ..16], ..16],
       update: true,
-      size: 16
+      size: 16,
+      coords: (x,y,z)
     }
   }
 
-  pub fn new_with_random() -> Chunk {
+  pub fn size() -> int {
+    16
+  }
+
+  pub fn new_with_random(x: int, y: int, z: int) -> Chunk {
     let mut mut_land: [[[Block, ..16], ..16], ..16] =  [[[Generic, ..16], ..16], ..16];
     for x in range (0, 16){
       for y in range (0, 16) {
@@ -44,7 +50,8 @@ impl Chunk {
     Chunk {
       land: mut_land,
       update: true,
-      size: 16
+      size: 16,
+      coords: (x, y, z)
     }
   }
 
