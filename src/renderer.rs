@@ -5,6 +5,7 @@ extern mod glfw;
 extern mod gl;
 extern mod cgmath;
 
+
 use std::mem;
 use std::cast;
 use std::ptr;
@@ -26,6 +27,13 @@ use cgmath::vector::*;
 
 use chunk::*;
 use chunk::Block;
+
+use world::*;
+use world::World;
+
+use camera::*;
+use camera::World;
+
 
 // TODO extract into data file
 // TODO change variables to a more rust style
@@ -64,12 +72,21 @@ pub struct Renderer {
 
   model_to_world:   Mat4<f32>,
   world_to_camera:  Mat4<f32>,
-  camera_to_clip:   Mat4<f32>
+  camera_to_clip:   Mat4<f32>,
+
+  world: World
 
 }
 
 
 impl Renderer {
+  pub fn set_world_to_camera(&mut self, view: Mat4<f32>) -> () {
+    self.world_to_camera = view;
+  }
+  pub fn add_world(&mut self, world: World) -> () {
+    self.world = world;
+  }
+
   pub fn new() -> Renderer {
     let mut renderer = Renderer {
       vao:      0,
@@ -77,11 +94,12 @@ impl Renderer {
       ebo:      0,
       program:  0,
       model_to_world:   Mat4::identity(),
-      world_to_camera:  Mat4::identity(),
-//      world_to_camera:  Mat4::look_at(&Point3::new(75.0 as f32, 75.0, 75.0),
-//                                      &Point3::new(0.0 as f32, 0.0, 0.0),
-//                                      &Vec3::new(0.0 as f32, 0.0, 1.0)),
-      camera_to_clip:   Mat4::identity()
+//      world_to_camera:  Mat4::identity(),
+      world_to_camera:  Mat4::look_at(&Point3::new(75.0 as f32, 75.0, 75.0),
+                                      &Point3::new(0.0 as f32, 0.0, 0.0),
+                                      &Vec3::new(0.0 as f32, 0.0, 1.0)),
+      camera_to_clip:   Mat4::identity(),
+      world: World::new()
     };
 
 
@@ -130,54 +148,63 @@ impl Renderer {
     renderer
   }
 
-  pub fn update(&mut self, chunk: &Chunk) {
-      let mut block_vertexes: ~[GLbyte] = ~[];
-
-      // loop over blocks in the chunk
-      for z in range(0, chunk.len()) {
-        for x in range(0, chunk.len()) {
-          for y in range(0, chunk.len()) {
-            match chunk.get_block(x, y, z) {
-              Some(block) =>  {
-                for i in gen_vertex(x, y, z, block, chunk).iter(){
-                  block_vertexes.push(*i);
-                }
-                gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
-                unsafe{
-                  gl::BufferData(gl::ARRAY_BUFFER,
-                  (block_vertexes.len() * mem::size_of::<GLbyte>()) as GLsizeiptr,
-                  cast::transmute(&block_vertexes[0]), gl::STATIC_DRAW);
+  pub fn update(&mut self) {
+    for x in range(0 as int, self.world.chunks.len() as int) {
+      for y in range(0 as int, self.world.chunks.len() as int) {
+        for z in range(0 as int, self.world.chunks.len() as int) {
+          match self.world.chunks.find(&(x,y,z)) {
+            None => (),
+            Some(chunk) => {
+              let mut block_vertexes: ~[GLbyte] = ~[];
+              // loop over blocks in the chunk
+              for z in range(0, chunk.len()) {
+                for x in range(0, chunk.len()) {
+                  for y in range(0, chunk.len()) {
+                    match chunk.get_block(x, y, z) {
+                      Some(block) =>  {
+                        for i in gen_vertex(x, y, z, block, chunk).iter(){
+                          block_vertexes.push(*i);
+                        }
+                        gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
+                        unsafe{
+                          gl::BufferData(gl::ARRAY_BUFFER,
+                          (block_vertexes.len() * mem::size_of::<GLbyte>()) as GLsizeiptr,
+                          cast::transmute(&block_vertexes[0]), gl::STATIC_DRAW);
+                        }
+                      }
+                      None => ()
+                    }
+                  }
                 }
               }
-              None => ()
+//              self.world_to_camera  = Mat4::look_at(&Point3::new(75.0 as f32, 75.0, 75.0),
+//                                                    &Point3::new(0.0 as f32, 0.0, 0.0),
+//                                                    &Vec3::new(0.0 as f32, 0.0, 1.0));
+              self.camera_to_clip   = projection::perspective(deg(45.0 as f32),
+                                                              800.0/600.0, 1.0, 150.0);
+
+
+              unsafe {
+                let uni_m_to_wor =
+                  "model_to_world".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
+                let uni_w_to_cam =
+                  "world_to_camera".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
+                let uni_cam_to_c =
+                  "camera_to_clip".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
+
+                gl::UniformMatrix4fv(uni_m_to_wor, 1, gl::FALSE, self.model_to_world.ptr());
+                gl::UniformMatrix4fv(uni_w_to_cam, 1, gl::FALSE, self.world_to_camera.ptr());
+                gl::UniformMatrix4fv(uni_cam_to_c, 1, gl::FALSE, self.camera_to_clip.ptr());
+
+                // Draw to the screen
+                gl::DrawArrays(gl::TRIANGLES, 0, block_vertexes.len() as i32);
+
+              }
             }
           }
         }
       }
-
-
-      unsafe {
-        self.world_to_camera  = Mat4::look_at(&Point3::new(75.0 as f32, 75.0, 75.0),
-                                              &Point3::new(0.0 as f32, 0.0, 0.0),
-                                              &Vec3::new(0.0 as f32, 0.0, 1.0));
-        self.camera_to_clip   = projection::perspective(deg(45.0 as f32),
-                                                        800.0/600.0, 1.0, 150.0);
-
-        let uni_m_to_wor =
-          "model_to_world".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
-        let uni_w_to_cam =
-          "world_to_camera".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
-        let uni_cam_to_c =
-          "camera_to_clip".with_c_str(|ptr| gl::GetUniformLocation(self.program, ptr));
-
-        gl::UniformMatrix4fv(uni_m_to_wor, 1, gl::FALSE, self.model_to_world.ptr());
-        gl::UniformMatrix4fv(uni_w_to_cam, 1, gl::FALSE, self.world_to_camera.ptr());
-        gl::UniformMatrix4fv(uni_cam_to_c, 1, gl::FALSE, self.camera_to_clip.ptr());
-
-      }
-
-      // Draw to the screen
-      gl::DrawArrays(gl::TRIANGLES, 0, block_vertexes.len() as i32);
+    }
   }
 }
 

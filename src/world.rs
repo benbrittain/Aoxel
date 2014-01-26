@@ -5,7 +5,6 @@ extern mod noise;
 extern mod gl;
 
 use chunk::*;
-use renderer::*;
 
 use gl::*;
 use gl::types::*;
@@ -17,17 +16,16 @@ use std::rand::*;
 use std::rand;
 
 pub struct World {
-  chunks: HashMap<(int,int,int), Chunk>,
-  renderer: Renderer
+  chunks: HashMap<(int,int,int), Chunk>
+//  renderer: Renderer
 }
 
 impl World {
   pub fn new() -> World {
     let mut x = World {
       chunks: HashMap::new(),
-      renderer: Renderer::new()
+//      renderer: Renderer::new()
     };
-//    x.init_chunks();
     x.init_terrain();
     x
   }
@@ -111,21 +109,22 @@ impl World {
     }
   }
 
-  pub fn render(&mut self) -> () {
-    gl::ClearColor(0.1, 0.1, 0.1, 0.1);
-    gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-    // TODO parallelize w/ tasks
-    for x in range(0 as int, self.chunks.len() as int) {
-      for y in range(0 as int, self.chunks.len() as int) {
-        for z in range(0 as int, self.chunks.len() as int) {
-          match self.chunks.find_mut(&(x,y,z)) {
-            None => (),
-            Some(chunk) => { self.renderer.update(chunk);
-              chunk.reset_update();
-            }
-          }
-        }
-      }
-    }
-  }
+//  pub fn render(&mut self) -> () {
+//    gl::ClearColor(0.1, 0.1, 0.1, 0.1);
+//    gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+//    // TODO parallelize w/ tasks
+//    for x in range(0 as int, self.chunks.len() as int) {
+//      for y in range(0 as int, self.chunks.len() as int) {
+//        for z in range(0 as int, self.chunks.len() as int) {
+//          match self.chunks.find_mut(&(x,y,z)) {
+//            None => (),
+//            Some(chunk) => {
+//              self.renderer.update(chunk);
+//              chunk.reset_update();
+//            }
+//          }
+//        }
+//      }
+//    }
+//  }
 }
