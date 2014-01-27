@@ -99,15 +99,25 @@ impl Window {
       // This is where all the events in main occur
       cb(self);
 
+      // All sorts of camera movement. may change
       self.event_handler.poll_events(|event: &event::Event | {
         match *event {
-          event::KeyPressed(key) => println!("{}", key.to_str()),
+          event::KeyPressed(key) => {
+            match key {
+              glfw::KeyRight => self.camera.mov_pos(5 as f32, 0 as f32, 0 as f32),
+              glfw::KeyLeft => self.camera.mov_pos(-5 as f32, 0 as f32, 0 as f32),
+              glfw::KeyUp => self.camera.mov_pos(0 as f32, -5 as f32, 0 as f32),
+              glfw::KeyDown => self.camera.mov_pos(0 as f32, 5 as f32, 0 as f32),
+              _ => println!("No binding: {}", key.to_str())
+            }
+          },
           event::CursorPos(x, y) => self.camera.update(x as f32, y as f32),
           _ => ()
         }
       });
 
       self.map_renderer.update();
+      // TODO rip this out elsewhere
       self.map_renderer.set_world_to_camera(self.camera.view());
 
       self.window.swap_buffers();

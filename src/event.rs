@@ -36,11 +36,6 @@ impl EventHandler {
     self.event_collector.read(
       |event_vec| for event in event_vec.iter()  {
         actions(event)
-//        match *event {
-//          KeyPressed(key) => println!("{}", key.to_str()),
-//          CursorPos(x,y) => println!("({},{})", x,y),
-//          _ => println!("Unknown event!")
-//        }
       });
     self.event_collector.write(
       |event_vec| event_vec.clear());

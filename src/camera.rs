@@ -11,6 +11,7 @@ use cgmath::point::*;
 use std::num;
 use std::libc;
 
+
 pub struct Camera {
   position: Point3<f32>,
   angles: Vec2<f32>
@@ -28,6 +29,15 @@ impl Camera {
     self.angles = Vec2::new(x, y);
   }
 
+  pub fn set_pos(&mut self, x: f32, y: f32, z: f32) {
+    self.position = Point3::new(x, y, z);
+  }
+
+  pub fn mov_pos(&mut self, x: f32, y: f32, z: f32) {
+    self.position = Point3::new(self.position.x + x,
+                                self.position.y + y,
+                                self.position.z + z);
+  }
   pub fn view(&self) -> Mat4<f32> {
     let mut look_at: Vec3<f32> = Vec3::new(0.0 as f32, 0.0, 0.0);
     look_at.x = num::sin(self.angles.x) * num::cos(self.angles.y);
@@ -39,5 +49,6 @@ impl Camera {
                   &Point::from_vec(&look_at.mul(&self.position.to_vec())),
                   &Vec3::new(0.0 as f32, 0.0, 1.0))
   }
+
 }
 
